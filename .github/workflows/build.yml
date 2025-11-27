@@ -37,11 +37,21 @@ jobs:
         run: |
           New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory
           dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
+          
       - name: Build and analyze
         env:
+          # The token is correctly defined as an environment variable here.
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         shell: powershell
         run: |
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"vikrant1717_sonar-dotnet" /o:"vikrant1717" /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
-          dotnet build
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="${{ secrets.SONAR_TOKEN }}"
+          # 1. Start analysis: Removed explicit /d:sonar.token as it is picked up from env
+          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"vikrant1717_sonar-dotnet" /o:"vikrant1717"
+          
+          # 2. Build your project: FIX REQUIRED HERE!
+          # *** IMPORTANT: REPLACE 'YourSolutionName.sln' with the actual path and name ***
+          # Example: If your solution is in a 'src' folder: dotnet build src/YourSolutionName.sln
+          # Example: If your project is in a 'WebApp' folder: dotnet build WebApp/WebApp.csproj
+          dotnet build YourSolutionName.sln 
+          
+          # 3. End analysis: Removed explicit /d:sonar.token
+          ${{ runner.temp }}\scanner\dotnet-sonarscanner end
