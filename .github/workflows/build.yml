@@ -1,4 +1,5 @@
-name: SonarQube C## Analysis
+name: SonarQube C# Analysis
+
 on:
   push:
     branches:
@@ -7,60 +8,38 @@ on:
     types: [opened, synchronize, reopened]
 
 jobs:
-  build:
-    name: Build and analyze C#
+  sonar-scan:
     runs-on: windows-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          java-version: 17
-          distribution: 'zulu'
-      
-      - name: Setup .NET
+          fetch-depth: 0
+
+      - name: Setup .NET (required by scanner)
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
           dotnet-quality: 'preview'
-      
-      - name: Cache SonarQube packages
-        uses: actions/cache@v4
-        with:
-          path: ~\sonar\cache
-          key: ${{ runner.os }}-sonar
-          restore-keys: ${{ runner.os }}-sonar
-      
-      - name: Cache SonarQube scanner
-        id: cache-sonar-scanner
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}\scanner
-          key: ${{ runner.os }}-sonar-scanner
-          restore-keys: ${{ runner.os }}-sonar-scanner
-      
-      - name: Install SonarQube scanner
-        if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
+
+      - name: Install SonarScanner
         shell: pwsh
         run: |
-          New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory -Force
-          dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
-      
-      - name: Build and analyze
+          dotnet tool update --global dotnet-sonarscanner
+
+      - name: Run SonarCloud Scan (NO BUILD)
+        shell: pwsh
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        shell: pwsh
         run: |
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin `
+          dotnet-sonarscanner begin `
             /k:"vikrant1717_sonar-dotnet" `
             /o:"vikrant1717" `
-            /d:sonar.host.url="https://sonarcloud.io"
+            /d:sonar.host.url="https://sonarcloud.io" `
+            /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
+
+          # No build step — only scan
           
-          dotnet build analyzers\SonarAnalyzer.sln --configuration Release
-          
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner end
+          dotnet-sonarscanner end `
+            /d:sonar.login="${{ secrets.SONAR_TOKEN }}"
